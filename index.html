@@ -5,13 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>여행 플래너</title>
     
-    <!-- Tailwind CSS (디자인용) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Babel (JSX 변환용) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- React 및 아이콘 라이브러리 불러오기 (Import Map) -->
+    <!-- Firebase SDK (Version 11.6.1) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // 전역 객체에 Firebase 모듈 할당 (React 컴포넌트에서 사용하기 위함)
+        window.Firebase = {
+            initializeApp, getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously,
+            getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, query
+        };
+    </script>
+    
+    <!-- React & Icons Import Map -->
     <script type="importmap">
     {
         "imports": {
@@ -25,125 +38,120 @@
 <body>
     <div id="root"></div>
 
-    <!-- 메인 스크립트 -->
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useMemo } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Plus, Edit2, Trash2, MapPin, Clock, Check, X, Settings, Search, Calendar, ChevronRight, StickyNote, AlertTriangle } from 'lucide-react';
+        import { Plus, Edit2, Trash2, MapPin, Clock, Check, X, Settings, Search, Calendar, ChevronRight, StickyNote, AlertTriangle, LogOut, Loader2 } from 'lucide-react';
 
-        // --- Styles & Fonts Injection ---
+        // --- Styles ---
         const FontStyles = () => (
           <style>{`
             @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css");
             @import url("https://cdn.jsdelivr.net/gh/sun-typeface/suit/fonts/static/woff2/SUIT.css");
             @import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&display=swap');
 
-            body {
-              background-color: #f2f4f6;
-            }
-
+            body { background-color: #f2f4f6; }
             .font-pretendard { font-family: 'Pretendard', sans-serif; }
             .font-suit { font-family: 'SUIT', sans-serif; }
             .font-baemin { font-family: 'Do Hyeon', sans-serif; }
-            
-            .no-scrollbar::-webkit-scrollbar {
-              display: none;
-            }
-            .no-scrollbar {
-              -ms-overflow-style: none;
-              scrollbar-width: none;
-            }
-            
-            .glass-effect {
-              background: rgba(255, 255, 255, 0.9);
-              backdrop-filter: blur(10px);
-            }
+            .no-scrollbar::-webkit-scrollbar { display: none; }
+            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            .glass-effect { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
           `}</style>
         );
 
         // --- Theme Config ---
         const themeConfig = {
-          blue: { 
-            name: '오션 블루',
-            primary: 'bg-blue-500', 
-            hover: 'hover:bg-blue-600',
-            light: 'bg-blue-50', 
-            text: 'text-blue-600', 
-            border: 'border-blue-100',
-            ring: 'focus:ring-blue-500',
-            shadow: 'shadow-blue-200'
-          },
-          emerald: { 
-            name: '제주 그린',
-            primary: 'bg-emerald-500', 
-            hover: 'hover:bg-emerald-600',
-            light: 'bg-emerald-50', 
-            text: 'text-emerald-600', 
-            border: 'border-emerald-100',
-            ring: 'focus:ring-emerald-500',
-            shadow: 'shadow-emerald-200'
-          },
-          rose: { 
-            name: '선셋 핑크',
-            primary: 'bg-rose-500', 
-            hover: 'hover:bg-rose-600',
-            light: 'bg-rose-50', 
-            text: 'text-rose-600', 
-            border: 'border-rose-100',
-            ring: 'focus:ring-rose-500',
-            shadow: 'shadow-rose-200'
-          },
-          violet: { 
-            name: '미드나잇 퍼플',
-            primary: 'bg-violet-500', 
-            hover: 'hover:bg-violet-600',
-            light: 'bg-violet-50', 
-            text: 'text-violet-600', 
-            border: 'border-violet-100',
-            ring: 'focus:ring-violet-500',
-            shadow: 'shadow-violet-200'
-          },
-          orange: { 
-            name: '감귤 오렌지',
-            primary: 'bg-orange-500', 
-            hover: 'hover:bg-orange-600',
-            light: 'bg-orange-50', 
-            text: 'text-orange-600', 
-            border: 'border-orange-100',
-            ring: 'focus:ring-orange-500',
-            shadow: 'shadow-orange-200'
-          },
+          blue: { name: '오션 블루', primary: 'bg-blue-500', hover: 'hover:bg-blue-600', light: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100', ring: 'focus:ring-blue-500', shadow: 'shadow-blue-200' },
+          emerald: { name: '제주 그린', primary: 'bg-emerald-500', hover: 'hover:bg-emerald-600', light: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', ring: 'focus:ring-emerald-500', shadow: 'shadow-emerald-200' },
+          rose: { name: '선셋 핑크', primary: 'bg-rose-500', hover: 'hover:bg-rose-600', light: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-100', ring: 'focus:ring-rose-500', shadow: 'shadow-rose-200' },
+          violet: { name: '미드나잇 퍼플', primary: 'bg-violet-500', hover: 'hover:bg-violet-600', light: 'bg-violet-50', text: 'text-violet-600', border: 'border-violet-100', ring: 'focus:ring-violet-500', shadow: 'shadow-violet-200' },
+          orange: { name: '감귤 오렌지', primary: 'bg-orange-500', hover: 'hover:bg-orange-600', light: 'bg-orange-50', text: 'text-orange-600', border: 'border-orange-100', ring: 'focus:ring-orange-500', shadow: 'shadow-orange-200' },
         };
 
-        // --- Component: Input Field ---
-        const InputField = ({ label, value, onChange, type = "text", placeholder, theme }) => (
+        // --- Firebase Init Helper ---
+        const useFirebase = () => {
+            const [services, setServices] = useState(null);
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const init = async () => {
+                    // 1. Firebase 설정 (깃허브 배포 시 아래 값을 본인의 설정값으로 교체하세요!)
+                    let config;
+                    try {
+                         config = window.__firebase_config ? JSON.parse(window.__firebase_config) : null;
+                    } catch (e) { console.warn("No env config found"); }
+
+if (!config) {
+    config = {
+        apiKey: "AIzaSyD...", 
+        authDomain: "my-trip-planner.firebaseapp.com",
+        projectId: "my-trip-planner",
+        storageBucket: "...",
+        messagingSenderId: "...",
+        appId: "..."
+    };
+}
+
+                    const { initializeApp, getAuth, onAuthStateChanged, getFirestore, signInWithCustomToken, signInAnonymously } = window.Firebase;
+                    
+                    const app = initializeApp(config);
+                    const auth = getAuth(app);
+                    const db = getFirestore(app);
+                    
+                    // 환경 변수에 따라 App ID 설정 (없으면 기본값)
+                    const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'my-travel-planner';
+
+                    setServices({ auth, db, appId });
+
+                    // Auth Init Logic
+                    const initAuth = async () => {
+                        if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                            try {
+                                await signInWithCustomToken(auth, window.__initial_auth_token);
+                            } catch(e) { console.error("Custom token login failed", e); }
+                        }
+                    };
+                    await initAuth();
+
+                    const unsubscribe = onAuthStateChanged(auth, (u) => {
+                        setUser(u);
+                        setLoading(false);
+                    });
+                    
+                    return () => unsubscribe();
+                };
+                
+                // Firebase 로드 대기
+                const timer = setInterval(() => {
+                    if (window.Firebase) {
+                        clearInterval(timer);
+                        init();
+                    }
+                }, 100);
+            }, []);
+
+            return { services, user, loading };
+        };
+
+        // --- Components ---
+        const InputField = ({ label, value, onChange, type = "text", placeholder, theme = 'blue' }) => (
           <div className="mb-4 w-full">
             <label className="block text-sm font-medium text-gray-500 mb-1 ml-1">{label}</label>
-            <input
-              type={type}
-              value={value}
-              onChange={onChange}
-              placeholder={placeholder}
-              className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${themeConfig[theme].ring}/50 focus:border-transparent transition-all`}
-            />
+            <input type={type} value={value} onChange={onChange} placeholder={placeholder}
+              className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${themeConfig[theme].ring}/50 focus:border-transparent transition-all`} />
           </div>
         );
 
-        // --- Component: Text Area ---
-        const TextAreaField = ({ label, value, onChange, placeholder, theme }) => (
+        const TextAreaField = ({ label, value, onChange, placeholder, theme = 'blue' }) => (
           <div className="mb-4 w-full">
             <label className="block text-sm font-medium text-gray-500 mb-1 ml-1">{label}</label>
-            <textarea
-              value={value}
-              onChange={onChange}
-              placeholder={placeholder}
-              rows={3}
-              className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${themeConfig[theme].ring}/50 focus:border-transparent transition-all resize-none`}
-            />
+            <textarea value={value} onChange={onChange} placeholder={placeholder} rows={3}
+              className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${themeConfig[theme].ring}/50 focus:border-transparent transition-all resize-none`} />
           </div>
         );
 
-        // --- Component: Modal ---
         const Modal = ({ isOpen, onClose, title, children }) => {
           if (!isOpen) return null;
           return (
@@ -162,223 +170,212 @@
           );
         };
 
-        // --- Storage Helper ---
-        const useStickyState = (defaultValue, key) => {
-          const [value, setValue] = useState(() => {
-            const stickyValue = window.localStorage.getItem(key);
-            return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
-          });
-          
-          useEffect(() => {
-            window.localStorage.setItem(key, JSON.stringify(value));
-          }, [key, value]);
-          
-          return [value, setValue];
-        };
+        const LoginScreen = ({ onLogin }) => (
+             <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50 font-pretendard text-center">
+                <div className="mb-8 p-4 bg-white rounded-3xl shadow-lg shadow-blue-100 transform rotate-[-2deg]">
+                    <MapPin size={48} className="text-blue-500" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">여행을 시작해볼까요?</h1>
+                <p className="text-gray-500 mb-8">구글 로그인으로 내 여행 계획을<br/>안전하게 보관하세요.</p>
+                <button 
+                    onClick={onLogin}
+                    className="flex items-center gap-3 bg-white border border-gray-200 px-6 py-4 rounded-2xl font-bold text-gray-700 shadow-sm hover:bg-gray-50 transition-all w-full max-w-xs justify-center"
+                >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    Google 계정으로 계속하기
+                </button>
+            </div>
+        );
 
-        // --- Main Application ---
+        // --- Main App ---
         function TravelPlanner() {
-          // --- States with Persistence ---
-          const [tripInfo, setTripInfo] = useStickyState({
-            title: '제주 여행',
-            startDate: '2025-08-29',
-            endDate: '2025-09-02'
-          }, 'planner-trip-info');
+          const { services, user, loading } = useFirebase();
+          const [dataLoading, setDataLoading] = useState(false);
 
-          const [items, setItems] = useStickyState([
-            { id: 1, date: '2025-08-29', time: '10:00', title: '인천공항 도착', location: '인천공항 제2여객터미널', category: '이동', memo: '여권, 보조배터리 챙기기' },
-            { id: 2, date: '2025-08-29', time: '13:30', title: '호텔 체크인', location: '그랜드 조선 제주', category: '숙소', memo: '얼리 체크인 요청해둠' },
-            { id: 3, date: '2025-08-29', time: '15:00', title: '해변 산책 & 카페', location: '협재 해수욕장', category: '활동', memo: '' },
-            { id: 4, date: '2025-08-30', time: '09:00', title: '우도 배 타기', location: '성산포항', category: '활동', memo: '신분증 필수 지참' },
-          ], 'planner-items');
+          // State
+          const [tripInfo, setTripInfo] = useState({ title: '도쿄 여행', startDate: '2025-08-29', endDate: '2025-09-02' });
+          const [items, setItems] = useState([]);
+          const [settings, setSettings] = useState({ font: 'pretendard', theme: 'blue' });
           
-          const [activeFont, setActiveFont] = useStickyState('pretendard', 'planner-font');
-          const [theme, setTheme] = useStickyState('blue', 'planner-theme');
-          
-          // Local State
+          // UI State
           const [selectedDate, setSelectedDate] = useState('ALL'); 
-          
-          // Modal States
           const [isItemModalOpen, setIsItemModalOpen] = useState(false);
           const [isTripModalOpen, setIsTripModalOpen] = useState(false);
           const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-          
-          // Confirm Modal States
           const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
           const [itemToDelete, setItemToDelete] = useState(null);
-          
-          const [isResetModalOpen, setIsResetModalOpen] = useState(false);
           
           const [editingItem, setEditingItem] = useState(null);
           const [itemFormData, setItemFormData] = useState({ date: '', time: '', title: '', location: '', category: '활동', memo: '' });
           const [tripFormData, setTripFormData] = useState({ ...tripInfo });
 
-          // Options
           const fontOptions = [
             { id: 'pretendard', name: '기본 (Pretendard)', class: 'font-pretendard' },
             { id: 'suit', name: 'SUIT', class: 'font-suit' },
             { id: 'baemin', name: '배민 (도현)', class: 'font-baemin' },
           ];
+          const currentTheme = themeConfig[settings.theme] || themeConfig.blue;
 
-          const currentTheme = themeConfig[theme];
+          // --- Firestore Sync ---
+          useEffect(() => {
+              if (!user || !services) return;
+              const { db, appId, collection, doc, onSnapshot } = window.Firebase;
 
-          // --- Logic for Dates ---
-          const getDaysArray = (start, end) => {
-            const arr = [];
-            const dt = new Date(start);
-            const endDt = new Date(end);
-            
-            if (isNaN(dt) || isNaN(endDt)) return [];
+              setDataLoading(true);
 
-            while (dt <= endDt) {
-              arr.push(new Date(dt).toISOString().split('T')[0]);
-              dt.setDate(dt.getDate() + 1);
-            }
-            return arr;
+              // 1. Settings & Trip Info Listener
+              const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
+              const unsubSettings = onSnapshot(settingsRef, (docSnap) => {
+                  if (docSnap.exists()) {
+                      const data = docSnap.data();
+                      if (data.tripInfo) setTripInfo(data.tripInfo);
+                      if (data.theme) setSettings(prev => ({ ...prev, theme: data.theme }));
+                      if (data.font) setSettings(prev => ({ ...prev, font: data.font }));
+                  } else {
+                      // Init Defaults if not exists
+                      setDoc(settingsRef, { 
+                          tripInfo: { title: '도쿄 여행', startDate: '2025-08-29', endDate: '2025-09-02' },
+                          theme: 'blue',
+                          font: 'pretendard' 
+                      }, { merge: true });
+                  }
+                  setDataLoading(false);
+              });
+
+              // 2. Items Listener
+              const itemsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'items');
+              const unsubItems = onSnapshot(itemsRef, (snapshot) => {
+                  const fetchedItems = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                  setItems(fetchedItems);
+              });
+
+              return () => { unsubSettings(); unsubItems(); };
+          }, [user, services]);
+
+          // --- Actions ---
+          const updateFirestoreSettings = async (updates) => {
+              if(!user || !services) return;
+              const { db, appId, doc, setDoc } = window.Firebase;
+              const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
+              await setDoc(settingsRef, updates, { merge: true });
           };
 
-          const tripDays = useMemo(() => getDaysArray(tripInfo.startDate, tripInfo.endDate), [tripInfo]);
-
-          // --- Handlers ---
-          const handleOpenTripEdit = () => {
-            setTripFormData({ ...tripInfo });
-            setIsTripModalOpen(true);
+          const handleLogin = async () => {
+              if (!services) return;
+              const { signInWithPopup, GoogleAuthProvider } = window.Firebase;
+              try {
+                  await signInWithPopup(services.auth, new GoogleAuthProvider());
+              } catch (error) {
+                  alert("로그인에 실패했어요: " + error.message);
+              }
           };
 
-          const addDays = (dateStr, days) => {
-            const result = new Date(dateStr);
-            result.setDate(result.getDate() + days);
-            return result.toISOString().split('T')[0];
+          const handleLogout = async () => {
+              if (!services) return;
+              const { signOut } = window.Firebase;
+              if(confirm("로그아웃 하시겠어요?")) {
+                  await signOut(services.auth);
+                  setItems([]); // Clear local state
+              }
           };
 
-          const handleTripSubmit = () => {
-            if (!tripFormData.title) return alert('여행 제목을 입력해주세요.');
-
-            const oldStart = new Date(tripInfo.startDate);
-            const newStart = new Date(tripFormData.startDate);
-            
-            // Check if start date changed
-            if (oldStart.getTime() !== newStart.getTime()) {
+          const handleTripSubmit = async () => {
+              if (!tripFormData.title) return alert('여행 제목을 입력해주세요.');
+              
+              // Date Shift Logic
+              const oldStart = new Date(tripInfo.startDate);
+              const newStart = new Date(tripFormData.startDate);
               const diffTime = newStart - oldStart;
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              
+              const { db, appId, doc, setDoc } = window.Firebase;
 
-              if (diffDays !== 0) {
-                 const newItems = items.map(item => ({
-                  ...item,
-                  date: addDays(item.date, diffDays)
-                }));
-                setItems(newItems);
+              // If dates shifted, update all items
+              if (diffDays !== 0 && items.length > 0) {
+                  if(confirm(`여행 날짜가 변경되었어요.\n일정들도 ${diffDays > 0 ? '+' : ''}${diffDays}일 이동할까요?`)) {
+                      const batchPromises = items.map(item => {
+                          const newDate = new Date(item.date);
+                          newDate.setDate(newDate.getDate() + diffDays);
+                          const dateStr = newDate.toISOString().split('T')[0];
+                          const itemRef = doc(db, 'artifacts', services.appId, 'users', user.uid, 'items', item.id);
+                          return setDoc(itemRef, { date: dateStr }, { merge: true });
+                      });
+                      await Promise.all(batchPromises);
+                  }
               }
-            }
 
-            setTripInfo(tripFormData);
-            if (selectedDate !== 'ALL') {
-              setSelectedDate('ALL');
-            }
-            setIsTripModalOpen(false);
+              await updateFirestoreSettings({ tripInfo: tripFormData });
+              setIsTripModalOpen(false);
           };
 
-          const handleOpenAdd = () => {
-            setEditingItem(null);
-            let initialDate = tripInfo.startDate;
-            if (selectedDate !== 'ALL' && tripDays.includes(selectedDate)) {
-              initialDate = selectedDate;
-            }
-            setItemFormData({ date: initialDate, time: '', title: '', location: '', category: '활동', memo: '' });
-            setIsItemModalOpen(true);
+          const handleItemSubmit = async () => {
+              if (!itemFormData.date || !itemFormData.time || !itemFormData.title) return alert('필수 정보를 입력해주세요.');
+              
+              const { db, appId, doc, setDoc, collection } = window.Firebase;
+              
+              if (editingItem) {
+                  const itemRef = doc(db, 'artifacts', appId, 'users', user.uid, 'items', editingItem.id);
+                  await setDoc(itemRef, itemFormData, { merge: true });
+              } else {
+                  const newRef = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'items'));
+                  await setDoc(newRef, itemFormData);
+              }
+              setIsItemModalOpen(false);
           };
 
-          const handleOpenEdit = (item) => {
-            setEditingItem(item);
-            setItemFormData({ ...item });
-            setIsItemModalOpen(true);
+          const confirmDelete = async () => {
+              if (itemToDelete) {
+                  const { db, appId, doc, deleteDoc } = window.Firebase;
+                  await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'items', itemToDelete));
+                  setItemToDelete(null);
+                  setIsDeleteModalOpen(false);
+              }
           };
 
-          const onClickDelete = (id) => {
-            setItemToDelete(id);
-            setIsDeleteModalOpen(true);
+          // --- Helpers ---
+          const getDaysArray = (start, end) => {
+            const arr = []; const dt = new Date(start); const endDt = new Date(end);
+            if (isNaN(dt) || isNaN(endDt)) return [];
+            while (dt <= endDt) { arr.push(new Date(dt).toISOString().split('T')[0]); dt.setDate(dt.getDate() + 1); }
+            return arr;
           };
-
-          const confirmDelete = () => {
-            if (itemToDelete) {
-              setItems(prev => prev.filter(item => item.id !== itemToDelete));
-              setItemToDelete(null);
-              setIsDeleteModalOpen(false);
-            }
-          };
-
-          const handleItemSubmit = () => {
-            if (!itemFormData.date || !itemFormData.time || !itemFormData.title) {
-              alert('날짜, 시간, 일정 이름은 꼭 입력해주세요.');
-              return;
-            }
-
-            if (editingItem) {
-              setItems(prev => prev.map(item => item.id === editingItem.id ? { ...itemFormData, id: item.id } : item));
-            } else {
-              setItems(prev => [...prev, { ...itemFormData, id: Date.now() }]);
-            }
-            setIsItemModalOpen(false);
-          };
-
-          const openGoogleMapsSearch = (query) => {
-            if (!query) return alert('장소를 입력한 후 검색해주세요.');
-            const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-            window.open(url, '_blank');
-          };
-
-          const onClickReset = () => {
-            setIsResetModalOpen(true);
-          };
-
-          const confirmReset = () => {
-            localStorage.removeItem('planner-trip-info');
-            localStorage.removeItem('planner-items');
-            localStorage.removeItem('planner-font');
-            localStorage.removeItem('planner-theme');
-            location.reload();
-          };
-
-          // Filter and Sort
-          const filteredItems = items.filter(item => {
-            const isDateMatch = selectedDate === 'ALL' || item.date === selectedDate;
-            const isWithinRange = tripDays.includes(item.date); // Hide out-of-range items
-            return isDateMatch && isWithinRange;
-          });
-
-          const sortedItems = [...filteredItems].sort((a, b) => {
-            if (a.date !== b.date) return a.date.localeCompare(b.date);
-            return a.time.localeCompare(b.time);
-          });
-
-          // Display Helper
-          const formatDateRange = (start, end) => {
-            const s = new Date(start);
-            const e = new Date(end);
-            const format = (d) => `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
-            return `${format(s)} - ${format(e)}`;
-          };
-
+          const tripDays = useMemo(() => getDaysArray(tripInfo.startDate, tripInfo.endDate), [tripInfo]);
+          
           const getDayLabel = (dateStr) => {
             const idx = tripDays.indexOf(dateStr);
-            if (idx === -1) return ''; 
-            return `Day ${idx + 1}`;
+            return idx === -1 ? '' : `Day ${idx + 1}`;
           };
 
+          // Filter Items
+          const sortedItems = useMemo(() => {
+              return items
+                .filter(item => {
+                    const isDateMatch = selectedDate === 'ALL' || item.date === selectedDate;
+                    const isWithinRange = tripDays.includes(item.date);
+                    return isDateMatch && isWithinRange;
+                })
+                .sort((a, b) => {
+                    if (a.date !== b.date) return a.date.localeCompare(b.date);
+                    return a.time.localeCompare(b.time);
+                });
+          }, [items, selectedDate, tripDays]);
+
+          // --- Render ---
+          if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" /></div>;
+          if (!user) return <LoginScreen onLogin={handleLogin} />;
+
           return (
-            <div className={`min-h-screen pb-24 ${fontOptions.find(f => f.id === activeFont)?.class}`}>
+            <div className={`min-h-screen pb-24 ${fontOptions.find(f => f.id === settings.font)?.class || 'font-pretendard'}`}>
               <FontStyles />
 
               {/* Header */}
               <header className="sticky top-0 z-40 glass-effect border-b border-gray-100 transition-all">
                 <div className="max-w-md mx-auto px-5 py-4 flex justify-between items-center">
-                  <div 
-                    onClick={handleOpenTripEdit} 
-                    className="cursor-pointer hover:opacity-70 transition-opacity p-2 -ml-2 rounded-xl hover:bg-gray-50 group"
-                  >
+                  <div onClick={() => { setTripFormData(tripInfo); setIsTripModalOpen(true); }} 
+                       className="cursor-pointer hover:opacity-70 transition-opacity p-2 -ml-2 rounded-xl hover:bg-gray-50 group">
                     <div className={`flex items-center text-sm ${currentTheme.text} font-bold mb-0.5`}>
                       <Calendar size={14} className="mr-1" />
-                      {formatDateRange(tripInfo.startDate, tripInfo.endDate)}
+                      {tripInfo.startDate} - {tripInfo.endDate}
                     </div>
                     <div className="flex items-center gap-2">
                       <h1 className="text-2xl font-extrabold text-gray-900">{tripInfo.title}</h1>
@@ -386,12 +383,8 @@
                     </div>
                   </div>
                   
-                  {/* Settings Menu */}
                   <div className="relative">
-                    <button 
-                      onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                      className="p-2.5 bg-white border border-gray-100 rounded-full shadow-sm hover:bg-gray-50 transition-all text-gray-600"
-                    >
+                    <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="p-2.5 bg-white border border-gray-100 rounded-full shadow-sm hover:bg-gray-50 transition-all text-gray-600">
                       <Settings size={20} />
                     </button>
                     
@@ -402,34 +395,22 @@
                           <p className="text-xs font-bold text-gray-400 mb-3 ml-1">폰트 설정</p>
                           <div className="space-y-1 mb-5">
                             {fontOptions.map(font => (
-                              <button
-                                key={font.id}
-                                onClick={() => setActiveFont(font.id)}
-                                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${activeFont === font.id ? `${currentTheme.light} ${currentTheme.text} font-bold` : 'text-gray-600 hover:bg-gray-50'}`}
-                              >
+                              <button key={font.id} onClick={() => updateFirestoreSettings({ font: font.id })}
+                                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${settings.font === font.id ? `${currentTheme.light} ${currentTheme.text} font-bold` : 'text-gray-600 hover:bg-gray-50'}`}>
                                 {font.name}
                               </button>
                             ))}
                           </div>
-
                           <p className="text-xs font-bold text-gray-400 mb-3 ml-1">테마 컬러</p>
                           <div className="grid grid-cols-5 gap-2 mb-5">
                             {Object.entries(themeConfig).map(([key, config]) => (
-                              <button
-                                key={key}
-                                onClick={() => setTheme(key)}
-                                className={`w-8 h-8 rounded-full ${config.primary} ring-2 ring-offset-2 transition-all ${theme === key ? 'ring-gray-300 scale-110' : 'ring-transparent hover:scale-110'}`}
-                                title={config.name}
-                              />
+                              <button key={key} onClick={() => updateFirestoreSettings({ theme: key })}
+                                className={`w-8 h-8 rounded-full ${config.primary} ring-2 ring-offset-2 transition-all ${settings.theme === key ? 'ring-gray-300 scale-110' : 'ring-transparent hover:scale-110'}`} />
                             ))}
                           </div>
-
                           <div className="border-t border-gray-100 pt-3">
-                              <button 
-                                onClick={onClickReset}
-                                className="w-full text-left px-2 py-2 text-xs text-red-400 hover:text-red-600 transition-colors"
-                              >
-                                  모든 데이터 초기화
+                              <button onClick={handleLogout} className="w-full text-left px-2 py-2 text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center">
+                                  <LogOut size={14} className="mr-2" /> 로그아웃
                               </button>
                           </div>
                         </div>
@@ -440,18 +421,13 @@
 
                 {/* Day Selector */}
                 <div className="max-w-md mx-auto px-5 pb-2 overflow-x-auto no-scrollbar flex space-x-2">
-                   <button
-                     onClick={() => setSelectedDate('ALL')}
-                     className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all ${selectedDate === 'ALL' ? `${currentTheme.primary} text-white shadow-md` : 'bg-white text-gray-500 border border-gray-100'}`}
-                   >
+                   <button onClick={() => setSelectedDate('ALL')}
+                     className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all ${selectedDate === 'ALL' ? `${currentTheme.primary} text-white shadow-md` : 'bg-white text-gray-500 border border-gray-100'}`}>
                      전체
                    </button>
                    {tripDays.map((date, idx) => (
-                     <button
-                       key={date}
-                       onClick={() => setSelectedDate(date)}
-                       className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all ${selectedDate === date ? `${currentTheme.primary} text-white shadow-md` : 'bg-white text-gray-500 border border-gray-100'}`}
-                     >
+                     <button key={date} onClick={() => setSelectedDate(date)}
+                       className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all ${selectedDate === date ? `${currentTheme.primary} text-white shadow-md` : 'bg-white text-gray-500 border border-gray-100'}`}>
                        Day {idx + 1}
                      </button>
                    ))}
@@ -460,18 +436,14 @@
 
               {/* Main Content */}
               <main className="max-w-md mx-auto px-5 py-6">
-                {/* Timeline */}
                 <div className="relative">
-                  {/* Vertical Line */}
                   <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-gray-200 rounded-full"></div>
-
                   <div className="space-y-8">
-                    {sortedItems.length > 0 ? (
+                    {dataLoading ? <div className="pl-12 text-gray-400 text-sm">일정을 불러오고 있어요...</div> : sortedItems.length > 0 ? (
                       sortedItems.map((item, index) => {
                         const showDayHeader = index === 0 || item.date !== sortedItems[index-1].date;
                         return (
                           <div key={item.id}>
-                            {/* Date Header in List */}
                             {showDayHeader && selectedDate === 'ALL' && (
                               <div className="pl-12 mb-4">
                                 <span className={`inline-block px-3 py-1 rounded-lg ${currentTheme.light} ${currentTheme.text} text-xs font-extrabold`}>
@@ -479,52 +451,31 @@
                                 </span>
                               </div>
                             )}
-                            
                             <div className="relative pl-12 group">
-                              {/* Dot */}
                               <div className={`absolute left-[9px] top-6 w-3.5 h-3.5 bg-white border-4 ${currentTheme.border.replace('border', 'border')} rounded-full z-10 box-content`} style={{ borderColor: 'currentColor', color: 'inherit' }}>
                                 <div className={`w-full h-full rounded-full ${currentTheme.primary}`}></div>
                               </div>
-
-                              {/* Card */}
                               <div className={`bg-white p-5 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border border-gray-50 transition-transform active:scale-[0.98]`}>
                                 <div className="flex justify-between items-start mb-2">
                                   <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-bold text-gray-600">
-                                    <Clock size={12} className="mr-1" />
-                                    {item.time}
+                                    <Clock size={12} className="mr-1" /> {item.time}
                                   </span>
                                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button 
-                                      onClick={() => handleOpenEdit(item)} 
-                                      className={`p-1.5 ${currentTheme.light} ${currentTheme.text} rounded-lg hover:opacity-80`}
-                                    >
+                                    <button onClick={() => { setEditingItem(item); setItemFormData(item); setIsItemModalOpen(true); }} className={`p-1.5 ${currentTheme.light} ${currentTheme.text} rounded-lg hover:opacity-80`}>
                                       <Edit2 size={14} />
                                     </button>
-                                    <button 
-                                      onClick={() => onClickDelete(item.id)} 
-                                      className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
-                                    >
+                                    <button onClick={() => { setItemToDelete(item.id); setIsDeleteModalOpen(true); }} className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
                                       <Trash2 size={14} />
                                     </button>
                                   </div>
                                 </div>
-                                
                                 <h3 className="text-lg font-bold text-gray-900 mb-1">{item.title}</h3>
-                                
-                                <button 
-                                  onClick={() => openGoogleMapsSearch(item.location)}
-                                  className={`flex items-center text-gray-500 text-sm hover:${currentTheme.text} hover:underline transition-colors text-left mb-2`}
-                                >
-                                  <MapPin size={14} className="mr-1 flex-shrink-0" />
-                                  <span className="truncate">{item.location || '장소 미정'}</span>
-                                  <ChevronRight size={12} className="ml-1 opacity-50" />
+                                <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`, '_blank')} className={`flex items-center text-gray-500 text-sm hover:${currentTheme.text} hover:underline transition-colors text-left mb-2`}>
+                                  <MapPin size={14} className="mr-1 flex-shrink-0" /> <span className="truncate">{item.location || '장소 미정'}</span> <ChevronRight size={12} className="ml-1 opacity-50" />
                                 </button>
-
-                                {/* Memo Section */}
                                 {item.memo && (
                                   <div className="mt-3 pt-3 border-t border-dashed border-gray-100 flex items-start text-xs text-gray-500 bg-gray-50/50 p-2 rounded-xl">
-                                    <StickyNote size={12} className={`mr-1.5 mt-0.5 ${currentTheme.text} flex-shrink-0`} />
-                                    <span className="leading-relaxed">{item.memo}</span>
+                                    <StickyNote size={12} className={`mr-1.5 mt-0.5 ${currentTheme.text} flex-shrink-0`} /> <span className="leading-relaxed">{item.memo}</span>
                                   </div>
                                 )}
                               </div>
@@ -534,206 +485,71 @@
                       })
                     ) : (
                       <div className="text-center py-20 text-gray-400">
-                        <p>
-                          {selectedDate === 'ALL' 
-                            ? '여행 기간 내에 등록된 일정이 없어요.' 
-                            : '이 날은 아직 일정이 없어요.'}
-                        </p>
-                        <button onClick={handleOpenAdd} className={`mt-4 ${currentTheme.text} font-bold`}>일정 추가하기</button>
+                        <p>{selectedDate === 'ALL' ? '아직 등록된 일정이 없어요.' : '이 날은 푹 쉬는 날인가요?'}</p>
+                        <button onClick={() => { setEditingItem(null); setItemFormData({ date: selectedDate === 'ALL' ? tripInfo.startDate : selectedDate, time: '', title: '', location: '', category: '활동', memo: '' }); setIsItemModalOpen(true); }} className={`mt-4 ${currentTheme.text} font-bold`}>일정 시작하기</button>
                       </div>
                     )}
                   </div>
                 </div>
               </main>
 
-              {/* Floating Action Button */}
+              {/* FAB */}
               <div className="fixed bottom-6 right-6 z-30 max-w-md w-full mx-auto px-5 pointer-events-none">
                 <div className="max-w-md mx-auto relative pointer-events-auto text-right">
-                  <button
-                    onClick={handleOpenAdd}
-                    className={`bg-gray-900 hover:bg-gray-800 text-white p-4 rounded-full shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center ml-auto ${currentTheme.shadow}`}
-                  >
+                  <button onClick={() => { setEditingItem(null); setItemFormData({ date: selectedDate === 'ALL' ? tripInfo.startDate : selectedDate, time: '', title: '', location: '', category: '활동', memo: '' }); setIsItemModalOpen(true); }}
+                    className={`bg-gray-900 hover:bg-gray-800 text-white p-4 rounded-full shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center ml-auto ${currentTheme.shadow}`}>
                     <Plus size={28} />
                   </button>
                 </div>
               </div>
 
-              {/* 1. Item Add/Edit Modal */}
-              <Modal
-                isOpen={isItemModalOpen}
-                onClose={() => setIsItemModalOpen(false)}
-                title={editingItem ? "일정 수정하기" : "새로운 일정"}
-              >
+              {/* Modals */}
+              <Modal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} title={editingItem ? "일정 수정하기" : "새로운 일정"}>
                 <div className="space-y-1">
                   <div className="grid grid-cols-2 gap-3 mb-1">
                     <div className="mb-4 w-full">
                         <label className="block text-sm font-medium text-gray-500 mb-1 ml-1">날짜</label>
-                        <select
-                            value={itemFormData.date}
-                            onChange={(e) => setItemFormData({ ...itemFormData, date: e.target.value })}
-                            className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${currentTheme.ring}/50 focus:border-transparent transition-all appearance-none`}
-                        >
-                            {tripDays.map((date, idx) => (
-                                <option key={date} value={date}>Day {idx+1} ({date.slice(5)})</option>
-                            ))}
-                            {!tripDays.includes(itemFormData.date) && itemFormData.date && (
-                                <option value={itemFormData.date}>{itemFormData.date}</option>
-                            )}
+                        <select value={itemFormData.date} onChange={(e) => setItemFormData({ ...itemFormData, date: e.target.value })}
+                            className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${currentTheme.ring}/50 focus:border-transparent transition-all appearance-none`}>
+                            {tripDays.map((date, idx) => <option key={date} value={date}>Day {idx+1} ({date.slice(5)})</option>)}
+                            {!tripDays.includes(itemFormData.date) && itemFormData.date && <option value={itemFormData.date}>{itemFormData.date}</option>}
                         </select>
                     </div>
-                    <InputField
-                        label="시간"
-                        type="time"
-                        value={itemFormData.time}
-                        onChange={(e) => setItemFormData({ ...itemFormData, time: e.target.value })}
-                        theme={theme}
-                    />
+                    <InputField label="시간" type="time" value={itemFormData.time} onChange={(e) => setItemFormData({ ...itemFormData, time: e.target.value })} theme={settings.theme} />
                   </div>
-
-                  <InputField
-                    label="무엇을 하나요?"
-                    placeholder="예: 맛집 탐방, 체크인"
-                    value={itemFormData.title}
-                    onChange={(e) => setItemFormData({ ...itemFormData, title: e.target.value })}
-                    theme={theme}
-                  />
-                  
+                  <InputField label="무엇을 하나요?" placeholder="예: 맛집 탐방, 체크인" value={itemFormData.title} onChange={(e) => setItemFormData({ ...itemFormData, title: e.target.value })} theme={settings.theme} />
                   <div className="mb-4">
                      <label className="block text-sm font-medium text-gray-500 mb-1 ml-1">장소</label>
                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={itemFormData.location}
-                          onChange={(e) => setItemFormData({ ...itemFormData, location: e.target.value })}
-                          placeholder="어디서 하나요?"
-                          className={`flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${currentTheme.ring}/50 focus:border-transparent transition-all`}
-                        />
-                        <button 
-                          onClick={() => openGoogleMapsSearch(itemFormData.location)}
-                          className={`${currentTheme.light} ${currentTheme.text} px-4 rounded-2xl font-bold text-sm whitespace-nowrap hover:opacity-80 transition-colors`}
-                        >
-                          <Search size={18} />
-                        </button>
+                        <input type="text" value={itemFormData.location} onChange={(e) => setItemFormData({ ...itemFormData, location: e.target.value })} placeholder="어디서 하나요?"
+                          className={`flex-1 bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${currentTheme.ring}/50 focus:border-transparent transition-all`} />
+                        <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(itemFormData.location)}`, '_blank')} className={`${currentTheme.light} ${currentTheme.text} px-4 rounded-2xl font-bold text-sm whitespace-nowrap hover:opacity-80 transition-colors`}><Search size={18} /></button>
                      </div>
                   </div>
-
-                  <TextAreaField 
-                    label="메모 (선택)"
-                    placeholder="준비물, 예약번호, 링크 등을 적어두세요."
-                    value={itemFormData.memo}
-                    onChange={(e) => setItemFormData({ ...itemFormData, memo: e.target.value })}
-                    theme={theme}
-                  />
-                  
-                  <div className="pt-2">
-                    <button
-                      onClick={handleItemSubmit}
-                      className={`w-full ${currentTheme.primary} text-white font-bold py-4 rounded-2xl shadow-lg ${currentTheme.shadow} active:scale-[0.98] transition-all ${currentTheme.hover}`}
-                    >
-                      {editingItem ? '수정 완료' : '일정 추가하기'}
-                    </button>
-                  </div>
+                  <TextAreaField label="메모 (선택)" placeholder="준비물, 예약번호 등" value={itemFormData.memo} onChange={(e) => setItemFormData({ ...itemFormData, memo: e.target.value })} theme={settings.theme} />
+                  <div className="pt-2"><button onClick={handleItemSubmit} className={`w-full ${currentTheme.primary} text-white font-bold py-4 rounded-2xl shadow-lg ${currentTheme.shadow} active:scale-[0.98] transition-all ${currentTheme.hover}`}>{editingItem ? '수정 완료' : '일정 추가하기'}</button></div>
                 </div>
               </Modal>
 
-              {/* 2. Trip Info Edit Modal */}
-              <Modal
-                isOpen={isTripModalOpen}
-                onClose={() => setIsTripModalOpen(false)}
-                title="여행 정보 수정"
-              >
+              <Modal isOpen={isTripModalOpen} onClose={() => setIsTripModalOpen(false)} title="여행 정보 수정">
                 <div className="space-y-1">
-                  <InputField
-                    label="여행 제목"
-                    placeholder="예: 제주 여행, 유럽 배낭여행"
-                    value={tripFormData.title}
-                    onChange={(e) => setTripFormData({ ...tripFormData, title: e.target.value })}
-                    theme={theme}
-                  />
+                  <InputField label="여행 제목" placeholder="예: 도쿄 여행" value={tripFormData.title} onChange={(e) => setTripFormData({ ...tripFormData, title: e.target.value })} theme={settings.theme} />
                   <div className="grid grid-cols-2 gap-3">
-                     <InputField
-                      label="시작일"
-                      type="date"
-                      value={tripFormData.startDate}
-                      onChange={(e) => setTripFormData({ ...tripFormData, startDate: e.target.value })}
-                      theme={theme}
-                    />
-                     <InputField
-                      label="종료일"
-                      type="date"
-                      value={tripFormData.endDate}
-                      onChange={(e) => setTripFormData({ ...tripFormData, endDate: e.target.value })}
-                      theme={theme}
-                    />
+                     <InputField label="시작일" type="date" value={tripFormData.startDate} onChange={(e) => setTripFormData({ ...tripFormData, startDate: e.target.value })} theme={settings.theme} />
+                     <InputField label="종료일" type="date" value={tripFormData.endDate} onChange={(e) => setTripFormData({ ...tripFormData, endDate: e.target.value })} theme={settings.theme} />
                   </div>
-                  
-                  <div className="pt-4">
-                    <button
-                      onClick={handleTripSubmit}
-                      className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-all hover:bg-gray-800"
-                    >
-                      저장하기
-                    </button>
-                  </div>
+                  <div className="pt-4"><button onClick={handleTripSubmit} className="w-full bg-gray-900 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-all hover:bg-gray-800">저장하기</button></div>
                 </div>
               </Modal>
 
-              {/* 3. Delete Confirmation Modal */}
-              <Modal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                title="일정 삭제"
-              >
+              <Modal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="일정 삭제">
                 <div className="text-center py-4">
-                  <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                    <Trash2 size={24} className="text-red-600" />
-                  </div>
+                  <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4"><Trash2 size={24} className="text-red-600" /></div>
                   <h3 className="text-lg font-bold text-gray-900 mb-2">정말 삭제하시겠어요?</h3>
                   <p className="text-sm text-gray-500 mb-6">삭제한 일정은 복구할 수 없어요.</p>
-                  
                   <div className="flex gap-3">
-                    <button
-                      onClick={() => setIsDeleteModalOpen(false)}
-                      className="flex-1 py-3.5 rounded-2xl bg-gray-100 font-bold text-gray-600 hover:bg-gray-200 transition-colors"
-                    >
-                      취소
-                    </button>
-                    <button
-                      onClick={confirmDelete}
-                      className="flex-1 py-3.5 rounded-2xl bg-red-500 font-bold text-white shadow-lg shadow-red-200 hover:bg-red-600 transition-colors"
-                    >
-                      삭제하기
-                    </button>
-                  </div>
-                </div>
-              </Modal>
-
-              {/* 4. Reset Confirmation Modal */}
-              <Modal
-                isOpen={isResetModalOpen}
-                onClose={() => setIsResetModalOpen(false)}
-                title="데이터 초기화"
-              >
-                <div className="text-center py-4">
-                  <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-                    <AlertTriangle size={24} className="text-orange-600" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">모든 데이터를 지울까요?</h3>
-                  <p className="text-sm text-gray-500 mb-6">작성한 일정과 설정이 모두 사라지고<br/>처음 상태로 돌아갑니다.</p>
-                  
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setIsResetModalOpen(false)}
-                      className="flex-1 py-3.5 rounded-2xl bg-gray-100 font-bold text-gray-600 hover:bg-gray-200 transition-colors"
-                    >
-                      취소
-                    </button>
-                    <button
-                      onClick={confirmReset}
-                      className="flex-1 py-3.5 rounded-2xl bg-gray-900 font-bold text-white shadow-lg hover:bg-gray-800 transition-colors"
-                    >
-                      초기화
-                    </button>
+                    <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3.5 rounded-2xl bg-gray-100 font-bold text-gray-600 hover:bg-gray-200 transition-colors">취소</button>
+                    <button onClick={confirmDelete} className="flex-1 py-3.5 rounded-2xl bg-red-500 font-bold text-white shadow-lg shadow-red-200 hover:bg-red-600 transition-colors">삭제하기</button>
                   </div>
                 </div>
               </Modal>
