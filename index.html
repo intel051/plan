@@ -84,14 +84,15 @@
                     } catch (e) { console.warn("No env config found"); }
 
 if (!config) {
-    config = {
-        apiKey: "AIzaSyD...", 
-        authDomain: "my-trip-planner.firebaseapp.com",
-        projectId: "my-trip-planner",
-        storageBucket: "...",
-        messagingSenderId: "...",
-        appId: "..."
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyDRRKbU60lAQn7KwJSoyn7kCupEBR4tiI4",
+  authDomain: "planner-f967b.firebaseapp.com",
+  projectId: "planner-f967b",
+  storageBucket: "planner-f967b.firebasestorage.app",
+  messagingSenderId: "399882909960",
+  appId: "1:399882909960:web:9b9b23c63d9d7ad131d4bd",
+  measurementId: "G-2Z9PC2VD6W"
+};
 }
 
                     const { initializeApp, getAuth, onAuthStateChanged, getFirestore, signInWithCustomToken, signInAnonymously } = window.Firebase;
