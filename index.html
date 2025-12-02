@@ -17,7 +17,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // 전역 객체에 Firebase 모듈 할당 (React 컴포넌트에서 사용하기 위함)
+        // 전역 객체에 Firebase 모듈 할당
         window.Firebase = {
             initializeApp, getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInWithCustomToken, signInAnonymously,
             getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, query
@@ -77,54 +77,63 @@
 
             useEffect(() => {
                 const init = async () => {
-                    // 1. Firebase 설정 (깃허브 배포 시 아래 값을 본인의 설정값으로 교체하세요!)
+                    // 1. Firebase 설정 로드
                     let config;
                     try {
                          config = window.__firebase_config ? JSON.parse(window.__firebase_config) : null;
                     } catch (e) { console.warn("No env config found"); }
 
-if (!config) {
-const firebaseConfig = {
-  apiKey: "AIzaSyDRRKbU60lAQn7KwJSoyn7kCupEBR4tiI4",
-  authDomain: "planner-f967b.firebaseapp.com",
-  projectId: "planner-f967b",
-  storageBucket: "planner-f967b.firebasestorage.app",
-  messagingSenderId: "399882909960",
-  appId: "1:399882909960:web:9b9b23c63d9d7ad131d4bd",
-  measurementId: "G-2Z9PC2VD6W"
-};
-}
+                    // 2. 사용자가 입력한 설정값 적용 (변수명을 config로 수정함)
+                    if (!config) {
+                        config = {
+                            apiKey: "AIzaSyDRRKbU60lAQn7KwJSoyn7kCupEBR4tiI4",
+                            authDomain: "planner-f967b.firebaseapp.com",
+                            projectId: "planner-f967b",
+                            storageBucket: "planner-f967b.firebasestorage.app",
+                            messagingSenderId: "399882909960",
+                            appId: "1:399882909960:web:9b9b23c63d9d7ad131d4bd",
+                            measurementId: "G-2Z9PC2VD6W"
+                        };
+                    }
 
-                    const { initializeApp, getAuth, onAuthStateChanged, getFirestore, signInWithCustomToken, signInAnonymously } = window.Firebase;
-                    
-                    const app = initializeApp(config);
-                    const auth = getAuth(app);
-                    const db = getFirestore(app);
-                    
-                    // 환경 변수에 따라 App ID 설정 (없으면 기본값)
-                    const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'my-travel-planner';
-
-                    setServices({ auth, db, appId });
-
-                    // Auth Init Logic
-                    const initAuth = async () => {
-                        if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
-                            try {
-                                await signInWithCustomToken(auth, window.__initial_auth_token);
-                            } catch(e) { console.error("Custom token login failed", e); }
-                        }
-                    };
-                    await initAuth();
-
-                    const unsubscribe = onAuthStateChanged(auth, (u) => {
-                        setUser(u);
+                    if (!config) {
+                        console.error("Firebase Config가 없습니다.");
                         setLoading(false);
-                    });
+                        return;
+                    }
+
+                    const { initializeApp, getAuth, onAuthStateChanged, getFirestore, signInWithCustomToken } = window.Firebase;
                     
-                    return () => unsubscribe();
+                    try {
+                        const app = initializeApp(config);
+                        const auth = getAuth(app);
+                        const db = getFirestore(app);
+                        const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'my-travel-planner';
+
+                        setServices({ auth, db, appId });
+
+                        const initAuth = async () => {
+                            if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                                try {
+                                    await signInWithCustomToken(auth, window.__initial_auth_token);
+                                } catch(e) { console.error("Custom token login failed", e); }
+                            }
+                        };
+                        await initAuth();
+
+                        const unsubscribe = onAuthStateChanged(auth, (u) => {
+                            setUser(u);
+                            setLoading(false);
+                        });
+                        
+                        return () => unsubscribe();
+                    } catch (error) {
+                        console.error("Firebase 초기화 오류:", error);
+                        alert("설정값이 올바르지 않은 것 같아요. 콘솔을 확인해주세요.");
+                        setLoading(false);
+                    }
                 };
                 
-                // Firebase 로드 대기
                 const timer = setInterval(() => {
                     if (window.Firebase) {
                         clearInterval(timer);
@@ -220,7 +229,10 @@ const firebaseConfig = {
           // --- Firestore Sync ---
           useEffect(() => {
               if (!user || !services) return;
-              const { db, appId, collection, doc, onSnapshot } = window.Firebase;
+              
+              // [FIX]: db and appId should come from services, functions from window.Firebase
+              const { db, appId } = services;
+              const { collection, doc, onSnapshot, setDoc } = window.Firebase; 
 
               setDataLoading(true);
 
@@ -256,7 +268,11 @@ const firebaseConfig = {
           // --- Actions ---
           const updateFirestoreSettings = async (updates) => {
               if(!user || !services) return;
-              const { db, appId, doc, setDoc } = window.Firebase;
+              
+              // [FIX] Destructuring
+              const { db, appId } = services;
+              const { doc, setDoc } = window.Firebase;
+              
               const settingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
               await setDoc(settingsRef, updates, { merge: true });
           };
@@ -289,7 +305,9 @@ const firebaseConfig = {
               const diffTime = newStart - oldStart;
               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
               
-              const { db, appId, doc, setDoc } = window.Firebase;
+              // [FIX] Destructuring
+              const { db, appId } = services;
+              const { doc, setDoc } = window.Firebase;
 
               // If dates shifted, update all items
               if (diffDays !== 0 && items.length > 0) {
@@ -312,7 +330,9 @@ const firebaseConfig = {
           const handleItemSubmit = async () => {
               if (!itemFormData.date || !itemFormData.time || !itemFormData.title) return alert('필수 정보를 입력해주세요.');
               
-              const { db, appId, doc, setDoc, collection } = window.Firebase;
+              // [FIX] Destructuring
+              const { db, appId } = services;
+              const { doc, setDoc, collection } = window.Firebase;
               
               if (editingItem) {
                   const itemRef = doc(db, 'artifacts', appId, 'users', user.uid, 'items', editingItem.id);
@@ -326,7 +346,10 @@ const firebaseConfig = {
 
           const confirmDelete = async () => {
               if (itemToDelete) {
-                  const { db, appId, doc, deleteDoc } = window.Firebase;
+                  // [FIX] Destructuring
+                  const { db, appId } = services;
+                  const { doc, deleteDoc } = window.Firebase;
+                  
                   await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'items', itemToDelete));
                   setItemToDelete(null);
                   setIsDeleteModalOpen(false);
