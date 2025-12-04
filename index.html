@@ -58,14 +58,23 @@
                 src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/SeoulHangangM.woff') format('woff');
                 font-weight: normal;
                 font-style: normal;
+                font-display: swap;
             }
 
-            /* 어비 마이센체 (URL 수정됨) */
+            /* 어비 마이센체 (수정됨) */
             @font-face {
-                font-family: 'UhBeeMysen';
-                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_five@2.0/UhBeeMysen.woff') format('woff');
+                font-family: 'AvieMaisen';
+                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_five@.2.0/UhBeemysen.woff') format('woff');
                 font-weight: normal;
-                font-style: normal;
+                font-display: swap;
+            }
+
+            /* 학교안심 받아쓰기 (추가됨) */
+            @font-face {
+                font-family: 'SchoolSafeDictation';
+                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-5@1.0/HakgyoansimBadasseugiTTF-L.woff2') format('woff2');
+                font-weight: normal;
+                font-display: swap;
             }
 
             /* 기본 바디 폰트를 프리텐다드로 설정하여 리스트 화면 적용 보장 */
@@ -78,7 +87,8 @@
             .font-suit { font-family: 'SUIT', sans-serif; }
             .font-nanum { font-family: 'NanumSquare', sans-serif; }
             .font-seoul { font-family: 'SeoulHangangM', sans-serif; }
-            .font-mysen { font-family: 'UhBeeMysen', sans-serif; }
+            .font-mysen { font-family: 'AvieMaisen', sans-serif; }
+            .font-school { font-family: 'SchoolSafeDictation', sans-serif; }
 
             .no-scrollbar::-webkit-scrollbar { display: none; }
             .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -190,20 +200,17 @@
                 const { db, appId } = services;
                 const { collection, onSnapshot, doc, getDoc, setDoc, getDocs, writeBatch } = window.Firebase;
 
-                // *** Migration Logic: Check if we need to migrate old data ***
                 const checkAndMigrate = async () => {
                     const tripsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trips');
                     const tripsSnap = await getDocs(tripsRef);
 
                     if (tripsSnap.empty) {
-                        // Check for old data
                         const oldSettingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
                         const oldSettingsSnap = await getDoc(oldSettingsRef);
 
                         if (oldSettingsSnap.exists()) {
                             const oldData = oldSettingsSnap.data();
-                            // Create new trip doc from old settings
-                            const newTripRef = doc(tripsRef); // Auto ID
+                            const newTripRef = doc(tripsRef); 
                             await setDoc(newTripRef, {
                                 title: oldData.tripInfo?.title || '나의 여행',
                                 startDate: oldData.tripInfo?.startDate || new Date().toISOString().split('T')[0],
@@ -213,7 +220,6 @@
                                 createdAt: new Date().toISOString()
                             });
 
-                            // Move items
                             const oldItemsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'items');
                             const oldItemsSnap = await getDocs(oldItemsRef);
                             
@@ -231,7 +237,6 @@
                 checkAndMigrate().then(() => {
                      const unsub = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'trips'), (snap) => {
                         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                        // Sort by created date or start date
                         list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
                         setTrips(list);
                         setLoading(false);
@@ -345,7 +350,8 @@
                 { id: 'suit', name: 'SUIT', class: 'font-suit' },
                 { id: 'nanum', name: '나눔스퀘어', class: 'font-nanum' },
                 { id: 'seoul', name: '서울한강체', class: 'font-seoul' },
-                { id: 'mysen', name: '어비 마이센', class: 'font-mysen' }
+                { id: 'mysen', name: '어비 마이센', class: 'font-mysen' },
+                { id: 'school', name: '학교안심 받아쓰기', class: 'font-school' }
             ];
 
             useEffect(() => {
@@ -548,6 +554,7 @@
 
             return (
                 <>
+                    <FontStyles />
                     {selectedTripId ? (
                         <TripPlanner 
                             services={services} 
