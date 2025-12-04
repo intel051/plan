@@ -60,15 +60,19 @@
                 font-style: normal;
             }
 
-            /* 어비 마이센체 */
+            /* 어비 마이센체 (URL 수정됨) */
             @font-face {
                 font-family: 'UhBeeMysen';
-                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_five@.2.0/UhBeeMysen.woff') format('woff');
+                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_five@2.0/UhBeeMysen.woff') format('woff');
                 font-weight: normal;
                 font-style: normal;
             }
 
-            body { background-color: #f2f4f6; }
+            /* 기본 바디 폰트를 프리텐다드로 설정하여 리스트 화면 적용 보장 */
+            body { 
+                background-color: #f2f4f6; 
+                font-family: 'Pretendard', sans-serif;
+            }
             
             .font-pretendard { font-family: 'Pretendard', sans-serif; }
             .font-suit { font-family: 'SUIT', sans-serif; }
@@ -290,9 +294,9 @@
                             </button>
                         </div>
 
-                        <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="새로운 일정 만들기">
+                        <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="새로운 여행 만들기">
                             <div className="space-y-1">
-                                <InputField label="어디로 떠나시나요?" placeholder="예: 도쿄 먹방 여행" value={newTripData.title} onChange={e => setNewTripData({...newTripData, title: e.target.value})} />
+                                <InputField label="어디로 떠나시나요?" placeholder="예: 오사카 먹방 여행" value={newTripData.title} onChange={e => setNewTripData({...newTripData, title: e.target.value})} />
                                 <div className="grid grid-cols-2 gap-3">
                                     <InputField label="시작일" type="date" value={newTripData.startDate} onChange={e => setNewTripData({...newTripData, startDate: e.target.value})} />
                                     <InputField label="종료일" type="date" value={newTripData.endDate} onChange={e => setNewTripData({...newTripData, endDate: e.target.value})} />
