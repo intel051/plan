@@ -171,38 +171,11 @@
             useEffect(() => {
                 const { db, appId } = services;
                 const { collection, onSnapshot, doc, getDoc, setDoc, getDocs, writeBatch } = window.Firebase;
-
-                const checkAndMigrate = async () => {
-                    const tripsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trips');
-                    const tripsSnap = await getDocs(tripsRef);
-
-                    if (!tripsSnap.empty) {
-                        const batch = writeBatch(db);
-                        const publicTripsRef = collection(db, 'artifacts', appId, 'public', 'data', 'trips');
-                        
-                        for (const oldDoc of tripsSnap.docs) {
-                            const newDocRef = doc(publicTripsRef); 
-                            const data = oldDoc.data();
-                            batch.set(newDocRef, {
-                                ...data,
-                                owner: { uid: user.uid, email: user.email },
-                                shares: {}, 
-                                migratedFrom: oldDoc.id
-                            });
-                            
-                            const oldItemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', user.uid, 'trips', oldDoc.id, 'items'));
-                            oldItemsSnap.forEach(item => {
-                                batch.set(doc(publicTripsRef, newDocRef.id, 'items', item.id), item.data());
-                            });
-                            
-                            batch.delete(oldDoc); 
-                        }
-                        await batch.commit();
-                    }
-                };
                 
-                checkAndMigrate().then(() => {
-                     const unsub = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'trips'), (snap) => {
+                let unsub = () => {};
+
+                const setupListener = () => {
+                    unsub = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'trips'), (snap) => {
                         const allTrips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                         
                         const myTrips = allTrips.filter(t => {
@@ -214,9 +187,50 @@
                         myTrips.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
                         setTrips(myTrips);
                         setLoading(false);
+                    }, (error) => {
+                        console.error("List listener error:", error);
+                        setLoading(false);
                     });
-                    return () => unsub();
-                });
+                };
+
+                const checkAndMigrate = async () => {
+                    try {
+                        const tripsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trips');
+                        const tripsSnap = await getDocs(tripsRef);
+
+                        if (!tripsSnap.empty) {
+                            const batch = writeBatch(db);
+                            const publicTripsRef = collection(db, 'artifacts', appId, 'public', 'data', 'trips');
+                            
+                            for (const oldDoc of tripsSnap.docs) {
+                                const newDocRef = doc(publicTripsRef); 
+                                const data = oldDoc.data();
+                                batch.set(newDocRef, {
+                                    ...data,
+                                    owner: { uid: user.uid, email: user.email },
+                                    shares: {}, 
+                                    migratedFrom: oldDoc.id
+                                });
+                                
+                                const oldItemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', user.uid, 'trips', oldDoc.id, 'items'));
+                                oldItemsSnap.forEach(item => {
+                                    batch.set(doc(publicTripsRef, newDocRef.id, 'items', item.id), item.data());
+                                });
+                                
+                                batch.delete(oldDoc); 
+                            }
+                            await batch.commit();
+                        }
+                    } catch (e) {
+                        console.warn("Migration skipped or failed:", e);
+                    } finally {
+                        setupListener();
+                    }
+                };
+                
+                checkAndMigrate();
+                
+                return () => unsub();
 
             }, [services, user]);
 
