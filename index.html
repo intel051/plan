@@ -40,7 +40,7 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect, useMemo } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Plus, Edit2, Trash2, MapPin, Clock, Check, X, Settings, Search, Calendar, ChevronRight, StickyNote, AlertTriangle, LogOut, Loader2, ArrowLeft, Plane } from 'lucide-react';
+        import { Plus, Edit2, Trash2, MapPin, Clock, Check, X, Settings, Search, Calendar, ChevronRight, StickyNote, AlertTriangle, LogOut, Loader2, ArrowLeft, Plane, Share2, Users, Eye, Lock } from 'lucide-react';
 
         // --- Styles ---
         const FontStyles = () => (
@@ -48,41 +48,13 @@
             /* 기본 폰트들 */
             @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard.css");
             @import url("https://cdn.jsdelivr.net/gh/sun-typeface/suit/fonts/static/woff2/SUIT.css");
-            
-            /* 나눔스퀘어 */
             @import url("https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@2.0/nanumsquare.css");
 
-            /* 서울한강체 */
-            @font-face {
-                font-family: 'SeoulHangangM';
-                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/SeoulHangangM.woff') format('woff');
-                font-weight: normal;
-                font-style: normal;
-                font-display: swap;
-            }
+            @font-face { font-family: 'SeoulHangangM'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/SeoulHangangM.woff') format('woff'); font-weight: normal; font-style: normal; font-display: swap; }
+            @font-face { font-family: 'AvieMaisen'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_five@.2.0/UhBeemysen.woff') format('woff'); font-weight: normal; font-display: swap; }
+            @font-face { font-family: 'SchoolSafeDictation'; src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-5@1.0/HakgyoansimBadasseugiTTF-L.woff2') format('woff2'); font-weight: normal; font-display: swap; }
 
-            /* 어비 마이센체 (수정됨) */
-            @font-face {
-                font-family: 'AvieMaisen';
-                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_five@.2.0/UhBeemysen.woff') format('woff');
-                font-weight: normal;
-                font-display: swap;
-            }
-
-            /* 학교안심 받아쓰기 (추가됨) */
-            @font-face {
-                font-family: 'SchoolSafeDictation';
-                src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-5@1.0/HakgyoansimBadasseugiTTF-L.woff2') format('woff2');
-                font-weight: normal;
-                font-display: swap;
-            }
-
-            /* 기본 바디 폰트를 프리텐다드로 설정하여 리스트 화면 적용 보장 */
-            body { 
-                background-color: #f2f4f6; 
-                font-family: 'Pretendard', sans-serif;
-            }
-            
+            body { background-color: #f2f4f6; font-family: 'Pretendard', sans-serif; }
             .font-pretendard { font-family: 'Pretendard', sans-serif; }
             .font-suit { font-family: 'SUIT', sans-serif; }
             .font-nanum { font-family: 'NanumSquare', sans-serif; }
@@ -157,18 +129,18 @@
         };
 
         // --- Common Components ---
-        const InputField = ({ label, value, onChange, type = "text", placeholder, theme = 'blue' }) => (
+        const InputField = ({ label, value, onChange, type = "text", placeholder, theme = 'blue', disabled = false }) => (
           <div className="mb-4 w-full">
             <label className="block text-sm font-medium text-gray-500 mb-1 ml-1">{label}</label>
-            <input type={type} value={value} onChange={onChange} placeholder={placeholder}
-              className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${themeConfig[theme].ring}/50 focus:border-transparent transition-all`} />
+            <input type={type} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled}
+              className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${themeConfig[theme].ring}/50 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed`} />
           </div>
         );
-        const TextAreaField = ({ label, value, onChange, placeholder, theme = 'blue' }) => (
+        const TextAreaField = ({ label, value, onChange, placeholder, theme = 'blue', disabled = false }) => (
           <div className="mb-4 w-full">
             <label className="block text-sm font-medium text-gray-500 mb-1 ml-1">{label}</label>
-            <textarea value={value} onChange={onChange} placeholder={placeholder} rows={3}
-              className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${themeConfig[theme].ring}/50 focus:border-transparent transition-all resize-none`} />
+            <textarea value={value} onChange={onChange} placeholder={placeholder} rows={3} disabled={disabled}
+              className={`w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 ${themeConfig[theme].ring}/50 focus:border-transparent transition-all resize-none disabled:opacity-50 disabled:cursor-not-allowed`} />
           </div>
         );
         const Modal = ({ isOpen, onClose, title, children }) => {
@@ -204,41 +176,43 @@
                     const tripsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trips');
                     const tripsSnap = await getDocs(tripsRef);
 
-                    if (tripsSnap.empty) {
-                        const oldSettingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
-                        const oldSettingsSnap = await getDoc(oldSettingsRef);
-
-                        if (oldSettingsSnap.exists()) {
-                            const oldData = oldSettingsSnap.data();
-                            const newTripRef = doc(tripsRef); 
-                            await setDoc(newTripRef, {
-                                title: oldData.tripInfo?.title || '나의 여행',
-                                startDate: oldData.tripInfo?.startDate || new Date().toISOString().split('T')[0],
-                                endDate: oldData.tripInfo?.endDate || new Date().toISOString().split('T')[0],
-                                theme: oldData.theme || 'blue',
-                                font: oldData.font || 'pretendard',
-                                createdAt: new Date().toISOString()
-                            });
-
-                            const oldItemsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'items');
-                            const oldItemsSnap = await getDocs(oldItemsRef);
-                            
-                            const batch = writeBatch(db);
-                            oldItemsSnap.forEach(itemDoc => {
-                                const newItemRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trips', newTripRef.id, 'items', itemDoc.id);
-                                batch.set(newItemRef, itemDoc.data());
+                    if (!tripsSnap.empty) {
+                        const batch = writeBatch(db);
+                        const publicTripsRef = collection(db, 'artifacts', appId, 'public', 'data', 'trips');
+                        
+                        for (const oldDoc of tripsSnap.docs) {
+                            const newDocRef = doc(publicTripsRef); 
+                            const data = oldDoc.data();
+                            batch.set(newDocRef, {
+                                ...data,
+                                owner: { uid: user.uid, email: user.email },
+                                shares: {}, 
+                                migratedFrom: oldDoc.id
                             });
                             
-                            if (!oldItemsSnap.empty) await batch.commit();
+                            const oldItemsSnap = await getDocs(collection(db, 'artifacts', appId, 'users', user.uid, 'trips', oldDoc.id, 'items'));
+                            oldItemsSnap.forEach(item => {
+                                batch.set(doc(publicTripsRef, newDocRef.id, 'items', item.id), item.data());
+                            });
+                            
+                            batch.delete(oldDoc); 
                         }
+                        await batch.commit();
                     }
                 };
                 
                 checkAndMigrate().then(() => {
-                     const unsub = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'trips'), (snap) => {
-                        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                        list.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-                        setTrips(list);
+                     const unsub = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'trips'), (snap) => {
+                        const allTrips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        
+                        const myTrips = allTrips.filter(t => {
+                            const isOwner = t.owner?.uid === user.uid;
+                            const isShared = t.shares && t.shares[user.email];
+                            return isOwner || isShared;
+                        });
+
+                        myTrips.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+                        setTrips(myTrips);
                         setLoading(false);
                     });
                     return () => unsub();
@@ -251,8 +225,10 @@
                 const { db, appId } = services;
                 const { collection, addDoc } = window.Firebase;
                 
-                await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'trips'), {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'trips'), {
                     ...newTripData,
+                    owner: { uid: user.uid, email: user.email },
+                    shares: {},
                     font: 'pretendard',
                     createdAt: new Date().toISOString()
                 });
@@ -262,10 +238,10 @@
 
             const handleDeleteTrip = async (e, tripId) => {
                 e.stopPropagation();
-                if(!confirm("이 여행 계획을 정말 삭제할까요?\n안의 모든 일정이 함께 삭제됩니다.")) return;
+                if(!confirm("이 여행 계획을 정말 삭제할까요?")) return;
                  const { db, appId } = services;
                  const { doc, deleteDoc } = window.Firebase;
-                 await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trips', tripId));
+                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trips', tripId));
             };
 
             if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" /></div>;
@@ -274,24 +250,46 @@
                 <div className="min-h-screen bg-gray-50 p-6 font-pretendard">
                     <div className="max-w-md mx-auto">
                         <div className="flex justify-between items-center mb-8">
-                            <h1 className="text-2xl font-bold text-gray-900">나의 여행 리스트</h1>
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900">나의 여행 리스트</h1>
+                                <p className="text-sm text-gray-500 mt-1">{user.email}님 안녕하세요!</p>
+                            </div>
                             <button onClick={onLogout} className="p-2 text-gray-400 hover:text-gray-600"><LogOut size={20}/></button>
                         </div>
 
                         <div className="grid gap-4">
-                            {trips.map(trip => (
-                                <div key={trip.id} onClick={() => onSelectTrip(trip.id)} 
-                                     className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all active:scale-[0.98] relative group">
-                                    <div className={`w-12 h-12 rounded-2xl ${themeConfig[trip.theme || 'blue'].light} flex items-center justify-center mb-4 text-2xl`}>
-                                        ✈️
+                            {trips.map(trip => {
+                                const isOwner = trip.owner?.uid === user.uid;
+                                return (
+                                    <div key={trip.id} onClick={() => onSelectTrip(trip)} 
+                                         className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all active:scale-[0.98] relative group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className={`w-12 h-12 rounded-2xl ${themeConfig[trip.theme || 'blue'].light} flex items-center justify-center text-2xl`}>
+                                                ✈️
+                                            </div>
+                                            {!isOwner && (
+                                                <span className="bg-orange-100 text-orange-600 text-xs font-bold px-2 py-1 rounded-lg">
+                                                    Shared
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900 mb-1">{trip.title}</h3>
+                                        <p className="text-sm text-gray-500">{trip.startDate} - {trip.endDate}</p>
+                                        
+                                        {!isOwner && trip.owner?.email && (
+                                            <p className="text-xs text-gray-400 mt-2 flex items-center">
+                                                <Users size={12} className="mr-1"/> {trip.owner.email}님의 여행
+                                            </p>
+                                        )}
+
+                                        {isOwner && (
+                                            <button onClick={(e) => handleDeleteTrip(e, trip.id)} className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
+                                                <Trash2 size={18} />
+                                            </button>
+                                        )}
                                     </div>
-                                    <h3 className="text-lg font-bold text-gray-900 mb-1">{trip.title}</h3>
-                                    <p className="text-sm text-gray-500">{trip.startDate} - {trip.endDate}</p>
-                                    <button onClick={(e) => handleDeleteTrip(e, trip.id)} className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                            ))}
+                                );
+                            })}
                             
                             <button onClick={() => setIsCreateModalOpen(true)} className="border-2 border-dashed border-gray-300 rounded-3xl p-6 flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors min-h-[160px]">
                                 <Plus size={32} className="mb-2"/>
@@ -301,7 +299,7 @@
 
                         <Modal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="새로운 여행 만들기">
                             <div className="space-y-1">
-                                <InputField label="어디로 떠나시나요?" placeholder="예: 오사카 먹방 여행" value={newTripData.title} onChange={e => setNewTripData({...newTripData, title: e.target.value})} />
+                                <InputField label="어디로 떠나시나요?" placeholder="예: 도쿄 먹방 여행" value={newTripData.title} onChange={e => setNewTripData({...newTripData, title: e.target.value})} />
                                 <div className="grid grid-cols-2 gap-3">
                                     <InputField label="시작일" type="date" value={newTripData.startDate} onChange={e => setNewTripData({...newTripData, startDate: e.target.value})} />
                                     <InputField label="종료일" type="date" value={newTripData.endDate} onChange={e => setNewTripData({...newTripData, endDate: e.target.value})} />
@@ -324,27 +322,33 @@
         };
 
         // [Trip Detail Planner Component]
-        const TripPlanner = ({ services, user, tripId, onBack }) => {
+        const TripPlanner = ({ services, user, trip, onBack }) => {
             const [dataLoading, setDataLoading] = useState(true);
-            const [tripInfo, setTripInfo] = useState({ title: '', startDate: '', endDate: '' });
+            const [tripInfo, setTripInfo] = useState({ title: trip.title, startDate: trip.startDate, endDate: trip.endDate });
             const [items, setItems] = useState([]);
-            const [settings, setSettings] = useState({ font: 'pretendard', theme: 'blue' });
+            const [settings, setSettings] = useState({ font: trip.font || 'pretendard', theme: trip.theme || 'blue' });
             
-            // UI States
+            const isOwner = trip.owner?.uid === user.uid;
+            const myPermission = isOwner ? 'owner' : (trip.shares?.[user.email] || 'read');
+            const canEdit = myPermission === 'owner' || myPermission === 'edit';
+
             const [selectedDate, setSelectedDate] = useState('ALL'); 
             const [isItemModalOpen, setIsItemModalOpen] = useState(false);
             const [isTripModalOpen, setIsTripModalOpen] = useState(false);
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+            const [isShareModalOpen, setIsShareModalOpen] = useState(false);
             const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
             const [itemToDelete, setItemToDelete] = useState(null);
             
             const [editingItem, setEditingItem] = useState(null);
             const [itemFormData, setItemFormData] = useState({ date: '', time: '', title: '', location: '', category: '활동', memo: '' });
             const [tripFormData, setTripFormData] = useState({});
+            
+            const [shareEmail, setShareEmail] = useState('');
+            const [sharePermission, setSharePermission] = useState('read');
 
             const currentTheme = themeConfig[settings.theme] || themeConfig.blue;
             
-            // Font Options Updated
             const fontOptions = [
                 { id: 'pretendard', name: '기본 (Pretendard)', class: 'font-pretendard' },
                 { id: 'suit', name: 'SUIT', class: 'font-suit' },
@@ -358,8 +362,7 @@
                 const { db, appId } = services;
                 const { collection, doc, onSnapshot } = window.Firebase;
 
-                // Listen to Trip Info
-                const tripRef = doc(db, 'artifacts', appId, 'users', user.uid, 'trips', tripId);
+                const tripRef = doc(db, 'artifacts', appId, 'public', 'data', 'trips', trip.id);
                 const unsubTrip = onSnapshot(tripRef, (snap) => {
                     if(snap.exists()) {
                         const data = snap.data();
@@ -369,25 +372,36 @@
                     }
                 });
 
-                // Listen to Items (Subcollection)
-                const itemsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trips', tripId, 'items');
+                const itemsRef = collection(db, 'artifacts', appId, 'public', 'data', 'trips', trip.id, 'items');
                 const unsubItems = onSnapshot(itemsRef, (snap) => {
                     setItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                     setDataLoading(false);
                 });
 
                 return () => { unsubTrip(); unsubItems(); };
-            }, [tripId]);
+            }, [trip.id]);
 
-            // Actions
             const updateTripSettings = async (updates) => {
+                if (!canEdit) return alert("수정 권한이 없어요.");
                 const { db, appId } = services; const { doc, setDoc } = window.Firebase;
-                await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trips', tripId), updates, { merge: true });
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trips', trip.id), updates, { merge: true });
+            };
+
+            const handleShare = async () => {
+                if (!shareEmail) return alert("이메일을 입력해주세요.");
+                const { db, appId } = services; const { doc, setDoc } = window.Firebase;
+                
+                const currentShares = trip.shares || {};
+                const newShares = { ...currentShares, [shareEmail]: sharePermission };
+                
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trips', trip.id), { shares: newShares }, { merge: true });
+                setShareEmail('');
+                alert(`${shareEmail}님에게 ${sharePermission === 'read' ? '읽기' : '수정'} 권한을 주었어요.`);
             };
 
             const handleTripUpdate = async () => {
+                if (!canEdit) return;
                 const { db, appId } = services; const { doc, setDoc } = window.Firebase;
-                // Date Shift Check
                 const oldStart = new Date(tripInfo.startDate);
                 const newStart = new Date(tripFormData.startDate);
                 const diffDays = Math.ceil((newStart - oldStart) / (1000 * 60 * 60 * 24));
@@ -396,7 +410,7 @@
                      if(confirm(`날짜가 변경되었네요. 일정들도 ${diffDays}일 이동할까요?`)) {
                          const batchPromises = items.map(item => {
                              const nd = new Date(item.date); nd.setDate(nd.getDate() + diffDays);
-                             return setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trips', tripId, 'items', item.id), { date: nd.toISOString().split('T')[0] }, { merge: true });
+                             return setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trips', trip.id, 'items', item.id), { date: nd.toISOString().split('T')[0] }, { merge: true });
                          });
                          await Promise.all(batchPromises);
                      }
@@ -406,19 +420,21 @@
             };
 
             const handleItemSubmit = async () => {
+                if (!canEdit) return alert("수정 권한이 없어요.");
                 if (!itemFormData.date || !itemFormData.title) return alert('정보를 입력해주세요.');
                 const { db, appId } = services; const { doc, setDoc, collection } = window.Firebase;
                 if (editingItem) {
-                    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trips', tripId, 'items', editingItem.id), itemFormData, { merge: true });
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trips', trip.id, 'items', editingItem.id), itemFormData, { merge: true });
                 } else {
-                    await setDoc(doc(collection(db, 'artifacts', appId, 'users', user.uid, 'trips', tripId, 'items')), itemFormData);
+                    await setDoc(doc(collection(db, 'artifacts', appId, 'public', 'data', 'trips', trip.id, 'items')), itemFormData);
                 }
                 setIsItemModalOpen(false);
             };
 
             const confirmDelete = async () => {
+                if (!canEdit) return;
                 const { db, appId } = services; const { doc, deleteDoc } = window.Firebase;
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'trips', tripId, 'items', itemToDelete));
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'trips', trip.id, 'items', itemToDelete));
                 setIsDeleteModalOpen(false);
             };
 
@@ -431,6 +447,11 @@
             };
             const tripDays = useMemo(() => getDaysArray(tripInfo.startDate, tripInfo.endDate), [tripInfo]);
             const sortedItems = useMemo(() => items.filter(i => (selectedDate === 'ALL' || i.date === selectedDate) && tripDays.includes(i.date)).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)), [items, selectedDate, tripDays]);
+            
+            const getDayLabel = (dateStr) => {
+                const idx = tripDays.indexOf(dateStr);
+                return idx === -1 ? '' : `Day ${idx + 1}`;
+            };
 
             if(dataLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-gray-400" /></div>;
 
@@ -441,24 +462,47 @@
                         <div className="max-w-md mx-auto px-5 py-4 flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <button onClick={onBack} className="p-2 -ml-2 hover:bg-gray-100 rounded-full text-gray-600"><ArrowLeft size={22}/></button>
-                                <div onClick={() => { setTripFormData(tripInfo); setIsTripModalOpen(true); }} className="cursor-pointer group">
-                                    <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">{tripInfo.title} <Edit2 size={16} className="text-gray-300 group-hover:text-gray-500"/></h1>
-                                    <span className={`text-xs ${currentTheme.text} font-bold`}>{tripInfo.startDate} - {tripInfo.endDate}</span>
+                                <div onClick={() => { if(canEdit){ setTripFormData(tripInfo); setIsTripModalOpen(true); }}} className={`cursor-pointer group ${!canEdit && 'pointer-events-none'}`}>
+                                    <h1 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                                        {tripInfo.title} 
+                                        {canEdit ? <Edit2 size={16} className="text-gray-300 group-hover:text-gray-500"/> : <Lock size={16} className="text-gray-300"/>}
+                                    </h1>
+                                    <span className={`text-xs ${currentTheme.text} font-bold`}>
+                                        {selectedDate === 'ALL' 
+                                            ? `${tripInfo.startDate} - ${tripInfo.endDate}` 
+                                            : `${getDayLabel(selectedDate)} (${selectedDate})`
+                                        }
+                                    </span>
                                 </div>
                             </div>
-                            <div className="relative">
-                                <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="p-2 bg-white border border-gray-100 rounded-full text-gray-600"><Settings size={20}/></button>
-                                {isSettingsOpen && (
-                                    <>
-                                    <div className="fixed inset-0 z-10" onClick={()=>setIsSettingsOpen(false)}/>
-                                    <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-20 p-3 animate-in fade-in slide-in-from-top-2">
-                                        <p className="text-xs font-bold text-gray-400 mb-2">테마 컬러</p>
-                                        <div className="flex gap-2 mb-4">{Object.entries(themeConfig).map(([k, c]) => <button key={k} onClick={() => updateTripSettings({theme: k})} className={`w-6 h-6 rounded-full ${c.primary} ${settings.theme === k ? 'ring-2 ring-gray-300' : ''}`}/>)}</div>
-                                        <p className="text-xs font-bold text-gray-400 mb-2">폰트</p>
-                                        <div className="space-y-1">{fontOptions.map(f => <button key={f.id} onClick={() => updateTripSettings({font: f.id})} className={`w-full text-left text-xs p-2 rounded ${settings.font === f.id ? 'bg-gray-100 font-bold' : ''}`}>{f.name}</button>)}</div>
-                                    </div>
-                                    </>
+                            <div className="flex gap-2">
+                                {/* Share Button */}
+                                {isOwner && (
+                                    <button onClick={() => setIsShareModalOpen(true)} className="p-2 bg-blue-50 border border-blue-100 rounded-full text-blue-600">
+                                        <Share2 size={20}/>
+                                    </button>
                                 )}
+                                
+                                <div className="relative">
+                                    <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="p-2 bg-white border border-gray-100 rounded-full text-gray-600"><Settings size={20}/></button>
+                                    {isSettingsOpen && (
+                                        <>
+                                        <div className="fixed inset-0 z-10" onClick={()=>setIsSettingsOpen(false)}/>
+                                        <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-20 p-3 animate-in fade-in slide-in-from-top-2">
+                                            {canEdit ? (
+                                                <>
+                                                    <p className="text-xs font-bold text-gray-400 mb-2">테마 컬러</p>
+                                                    <div className="flex gap-2 mb-4">{Object.entries(themeConfig).map(([k, c]) => <button key={k} onClick={() => updateTripSettings({theme: k})} className={`w-6 h-6 rounded-full ${c.primary} ${settings.theme === k ? 'ring-2 ring-gray-300' : ''}`}/>)}</div>
+                                                    <p className="text-xs font-bold text-gray-400 mb-2">폰트</p>
+                                                    <div className="space-y-1">{fontOptions.map(f => <button key={f.id} onClick={() => updateTripSettings({font: f.id})} className={`w-full text-left text-xs p-2 rounded ${settings.font === f.id ? 'bg-gray-100 font-bold' : ''}`}>{f.name}</button>)}</div>
+                                                </>
+                                            ) : (
+                                                <p className="text-center text-gray-400 text-sm py-2">읽기 전용 모드입니다.</p>
+                                            )}
+                                        </div>
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="max-w-md mx-auto px-5 pb-2 overflow-x-auto no-scrollbar flex space-x-2">
@@ -479,7 +523,9 @@
                                             <div className="bg-white p-5 rounded-3xl shadow-[0_2px_20px_rgba(0,0,0,0.04)] border border-gray-50">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-gray-100 text-xs font-bold text-gray-600"><Clock size={12} className="mr-1"/> {item.time}</span>
-                                                    <div className="flex gap-2"><button onClick={() => { setEditingItem(item); setItemFormData(item); setIsItemModalOpen(true); }} className={`p-1.5 ${currentTheme.light} ${currentTheme.text} rounded-lg`}><Edit2 size={14}/></button><button onClick={() => { setItemToDelete(item.id); setIsDeleteModalOpen(true); }} className="p-1.5 bg-red-50 text-red-600 rounded-lg"><Trash2 size={14}/></button></div>
+                                                    {canEdit && (
+                                                        <div className="flex gap-2"><button onClick={() => { setEditingItem(item); setItemFormData(item); setIsItemModalOpen(true); }} className={`p-1.5 ${currentTheme.light} ${currentTheme.text} rounded-lg`}><Edit2 size={14}/></button><button onClick={() => { setItemToDelete(item.id); setIsDeleteModalOpen(true); }} className="p-1.5 bg-red-50 text-red-600 rounded-lg"><Trash2 size={14}/></button></div>
+                                                    )}
                                                 </div>
                                                 <h3 className="text-lg font-bold text-gray-900 mb-1">{item.title}</h3>
                                                 <button onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}`, '_blank')} className={`flex items-center text-gray-500 text-sm hover:${currentTheme.text} text-left mb-2`}><MapPin size={14} className="mr-1"/> <span className="truncate">{item.location}</span></button>
@@ -488,17 +534,44 @@
                                         </div>
                                     </div>
                                 ))}
-                                {sortedItems.length === 0 && <div className="text-center py-20 text-gray-400"><p>일정이 없어요.</p><button onClick={() => { setEditingItem(null); setItemFormData({date: selectedDate==='ALL'?tripInfo.startDate:selectedDate, time:'', title:'', location:'', category:'활동', memo:''}); setIsItemModalOpen(true); }} className={`mt-4 ${currentTheme.text} font-bold`}>일정 추가하기</button></div>}
+                                {sortedItems.length === 0 && <div className="text-center py-20 text-gray-400"><p>일정이 없어요.</p>{canEdit && <button onClick={() => { setEditingItem(null); setItemFormData({date: selectedDate==='ALL'?tripInfo.startDate:selectedDate, time:'', title:'', location:'', category:'활동', memo:''}); setIsItemModalOpen(true); }} className={`mt-4 ${currentTheme.text} font-bold`}>일정 추가하기</button>}</div>}
                             </div>
                         </div>
                     </main>
 
-                    <div className="fixed bottom-6 right-6 z-30"><button onClick={() => { setEditingItem(null); setItemFormData({date: selectedDate==='ALL'?tripInfo.startDate:selectedDate, time:'', title:'', location:'', category:'활동', memo:''}); setIsItemModalOpen(true); }} className={`bg-gray-900 text-white p-4 rounded-full shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center ml-auto ${currentTheme.shadow}`}><Plus size={28}/></button></div>
+                    {canEdit && <div className="fixed bottom-6 right-6 z-30"><button onClick={() => { setEditingItem(null); setItemFormData({date: selectedDate==='ALL'?tripInfo.startDate:selectedDate, time:'', title:'', location:'', category:'활동', memo:''}); setIsItemModalOpen(true); }} className={`bg-gray-900 text-white p-4 rounded-full shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center ml-auto ${currentTheme.shadow}`}><Plus size={28}/></button></div>}
+
+                    {/* Share Modal */}
+                    <Modal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} title="친구 초대하기">
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-500">여행 계획을 공유할 친구의 구글 이메일을 입력해주세요.</p>
+                            <InputField label="친구 이메일" placeholder="friend@gmail.com" value={shareEmail} onChange={e => setShareEmail(e.target.value)} />
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-gray-500 mb-2 ml-1">권한 설정</label>
+                                <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
+                                    <button onClick={() => setSharePermission('read')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${sharePermission === 'read' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}>
+                                        읽기 전용
+                                    </button>
+                                    <button onClick={() => setSharePermission('edit')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${sharePermission === 'edit' ? 'bg-white shadow text-gray-900' : 'text-gray-400'}`}>
+                                        함께 편집
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button onClick={handleShare} className="w-full bg-blue-500 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 mt-2">
+                                초대하기
+                            </button>
+                        </div>
+                    </Modal>
 
                     <Modal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} title={editingItem ? "일정 수정" : "새 일정"}>
                         <div className="space-y-1">
                             <div className="grid grid-cols-2 gap-3 mb-1">
-                                <div className="mb-4"><label className="block text-sm font-medium text-gray-500 mb-1 ml-1">날짜</label><select value={itemFormData.date} onChange={e=>setItemFormData({...itemFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900">{tripDays.map((d,i)=><option key={d} value={d}>Day {i+1}</option>)}{!tripDays.includes(itemFormData.date) && <option value={itemFormData.date}>{itemFormData.date}</option>}</select></div>
+                                <div className="mb-4"><label className="block text-sm font-medium text-gray-500 mb-1 ml-1">날짜</label><select value={itemFormData.date} onChange={e=>setItemFormData({...itemFormData, date:e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-900">
+                                    {tripDays.map((d,i)=><option key={d} value={d}>Day {i+1} ({d})</option>)}
+                                    {!tripDays.includes(itemFormData.date) && <option value={itemFormData.date}>{itemFormData.date}</option>}
+                                </select></div>
                                 <InputField label="시간" type="time" value={itemFormData.time} onChange={e=>setItemFormData({...itemFormData, time:e.target.value})} theme={settings.theme}/>
                             </div>
                             <InputField label="일정명" value={itemFormData.title} onChange={e=>setItemFormData({...itemFormData, title:e.target.value})} theme={settings.theme}/>
@@ -537,7 +610,7 @@
 
         function App() {
             const { services, user, loading } = useFirebase();
-            const [selectedTripId, setSelectedTripId] = useState(null);
+            const [selectedTrip, setSelectedTrip] = useState(null);
 
             const handleLogin = async () => {
                 const { signInWithPopup, GoogleAuthProvider } = window.Firebase;
@@ -555,18 +628,18 @@
             return (
                 <>
                     <FontStyles />
-                    {selectedTripId ? (
+                    {selectedTrip ? (
                         <TripPlanner 
                             services={services} 
                             user={user} 
-                            tripId={selectedTripId} 
-                            onBack={() => setSelectedTripId(null)} 
+                            trip={selectedTrip} 
+                            onBack={() => setSelectedTrip(null)} 
                         />
                     ) : (
                         <TripList 
                             services={services} 
                             user={user} 
-                            onSelectTrip={setSelectedTripId}
+                            onSelectTrip={setSelectedTrip}
                             onLogout={handleLogout}
                         />
                     )}
