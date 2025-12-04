@@ -195,14 +195,16 @@
 
                 const checkAndMigrate = async () => {
                     try {
-                        const tripsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trips');
-                        const tripsSnap = await getDocs(tripsRef);
+                        const batch = writeBatch(db);
+                        let migrationCount = 0;
+                        const publicTripsRef = collection(db, 'artifacts', appId, 'public', 'data', 'trips');
 
-                        if (!tripsSnap.empty) {
-                            const batch = writeBatch(db);
-                            const publicTripsRef = collection(db, 'artifacts', appId, 'public', 'data', 'trips');
-                            
-                            for (const oldDoc of tripsSnap.docs) {
+                        // 1. Check Version 2 (Private Multi-Trips)
+                        const privateTripsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'trips');
+                        const privateSnap = await getDocs(privateTripsRef);
+
+                        if (!privateSnap.empty) {
+                            for (const oldDoc of privateSnap.docs) {
                                 const newDocRef = doc(publicTripsRef); 
                                 const data = oldDoc.data();
                                 batch.set(newDocRef, {
@@ -218,11 +220,52 @@
                                 });
                                 
                                 batch.delete(oldDoc); 
+                                migrationCount++;
                             }
-                            await batch.commit();
                         }
+
+                        // 2. Check Version 1 (Old Single Trip)
+                        // Only check if we haven't already migrated V1 data (assuming V1 data sits in settings/config)
+                        const oldSettingsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'config');
+                        const oldSettingsSnap = await getDoc(oldSettingsRef);
+
+                        if (oldSettingsSnap.exists()) {
+                            const oldData = oldSettingsSnap.data();
+                            // Check if this looks like V1 trip data
+                            if (oldData.tripInfo) {
+                                const newTripRef = doc(publicTripsRef);
+                                batch.set(newTripRef, {
+                                    title: oldData.tripInfo.title || '나의 여행',
+                                    startDate: oldData.tripInfo.startDate || new Date().toISOString().split('T')[0],
+                                    endDate: oldData.tripInfo.endDate || new Date().toISOString().split('T')[0],
+                                    theme: oldData.theme || 'blue',
+                                    font: oldData.font || 'pretendard',
+                                    owner: { uid: user.uid, email: user.email },
+                                    shares: {},
+                                    createdAt: new Date().toISOString(),
+                                    migratedFrom: 'v1_settings'
+                                });
+
+                                const oldItemsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'items');
+                                const oldItemsSnap = await getDocs(oldItemsRef);
+                                oldItemsSnap.forEach(itemDoc => {
+                                    batch.set(doc(publicTripsRef, newTripRef.id, 'items', itemDoc.id), itemDoc.data());
+                                });
+
+                                // Clean up old data to prevent re-migration
+                                batch.delete(oldSettingsRef);
+                                oldItemsSnap.forEach(itemDoc => batch.delete(itemDoc.ref));
+                                migrationCount++;
+                            }
+                        }
+
+                        if (migrationCount > 0) {
+                            await batch.commit();
+                            console.log(`Migrated ${migrationCount} trips successfully.`);
+                        }
+
                     } catch (e) {
-                        console.warn("Migration skipped or failed:", e);
+                        console.warn("Migration skipped or failed (Safe to ignore if no data):", e);
                     } finally {
                         setupListener();
                     }
